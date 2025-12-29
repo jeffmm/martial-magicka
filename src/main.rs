@@ -180,6 +180,12 @@ fn setup(
         Transform::from_xyz(0., 0., 2.0),
     ));
 
+    // Play background music on loop
+    commands.spawn((
+        AudioPlayer::<AudioSource>(asset_server.load("music/pixel_showdown.mp3")),
+        PlaybackSettings::LOOP,
+    ));
+
     // Preload all player sprite sheets to prevent flickering during transitions
     let sprite_sheets = PlayerSpriteSheets {
         idle: asset_server.load("player/idle-sheet.png"),
