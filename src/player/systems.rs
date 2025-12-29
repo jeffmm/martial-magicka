@@ -6,22 +6,46 @@ use crate::player::config::{
 use crate::player::state::PlayerState;
 use bevy::prelude::*;
 
+// Type aliases to simplify complex query types
+type PlayerInputQuery<'a> = (
+    &'a mut PlayerState,
+    &'a JumpPhysics,
+    &'a mut ComboWindow,
+    &'a Sprite,
+    &'a AnimationIndices,
+);
+
+type PlayerStateUpdateQuery<'a> = (
+    &'a mut PlayerState,
+    &'a AnimationTimer,
+    &'a AnimationIndices,
+    &'a Sprite,
+    &'a mut ComboWindow,
+    &'a mut JumpPhysics,
+    &'a Transform,
+);
+
+type JumpPhysicsInitQuery<'a> = (&'a PlayerState, &'a Transform, &'a mut JumpPhysics);
+
+type HitTrackingQuery<'a> = (
+    &'a PlayerState,
+    &'a mut crate::combat::components::HitTracking,
+);
+
+type SpriteUpdateQuery<'a> = (
+    &'a PlayerState,
+    &'a mut Sprite,
+    &'a mut AnimationIndices,
+    &'a mut AnimationTimer,
+);
+
 /// Phase 1: Handle player input and request state transitions
 ///
 /// This system builds an InputContext from keyboard state and delegates to the
 /// current state's handle_input method to determine transitions.
 pub fn player_input_system(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut player_query: Query<
-        (
-            &mut PlayerState,
-            &JumpPhysics,
-            &mut ComboWindow,
-            &Sprite,
-            &AnimationIndices,
-        ),
-        With<Player>,
-    >,
+    mut player_query: Query<PlayerInputQuery<'static>, With<Player>>,
     time: Res<Time>,
     game_state: Res<crate::GameState>,
 ) {
@@ -106,18 +130,7 @@ pub fn player_input_system(
 /// This system builds an UpdateContext from animation/physics state and delegates
 /// to the current state's update method to determine automatic transitions.
 pub fn player_state_update_system(
-    mut player_query: Query<
-        (
-            &mut PlayerState,
-            &AnimationTimer,
-            &AnimationIndices,
-            &Sprite,
-            &mut ComboWindow,
-            &mut JumpPhysics,
-            &Transform,
-        ),
-        With<Player>,
-    >,
+    mut player_query: Query<PlayerStateUpdateQuery<'static>, With<Player>>,
 ) {
     for (mut state, timer, indices, sprite, mut combo_window, jump_physics, transform) in
         player_query.iter_mut()
@@ -159,10 +172,7 @@ pub fn player_state_update_system(
 /// and reset velocity when entering Fall state from aerial attacks.
 /// This runs before player_state_update_system
 pub fn initialize_jump_physics(
-    mut player_query: Query<
-        (&PlayerState, &Transform, &mut JumpPhysics),
-        (With<Player>, Changed<PlayerState>),
-    >,
+    mut player_query: Query<JumpPhysicsInitQuery<'static>, (With<Player>, Changed<PlayerState>)>,
 ) {
     for (state, transform, mut jump_physics) in player_query.iter_mut() {
         match state {
@@ -191,10 +201,7 @@ pub fn initialize_jump_physics(
 /// Clear hit tracking when entering a new attack state
 /// This allows each attack to hit enemies independently
 pub fn clear_hit_tracking_on_state_change(
-    mut player_query: Query<
-        (&PlayerState, &mut crate::combat::components::HitTracking),
-        (With<Player>, Changed<PlayerState>),
-    >,
+    mut player_query: Query<HitTrackingQuery<'static>, (With<Player>, Changed<PlayerState>)>,
 ) {
     for (state, mut hit_tracking) in player_query.iter_mut() {
         // Clear hit tracking when entering any attack state
@@ -209,15 +216,7 @@ pub fn clear_hit_tracking_on_state_change(
 /// Uses preloaded sprite sheet handles to prevent flickering during transitions.
 /// The critical ordering ensures sprites remain visible throughout state changes.
 pub fn player_sprite_update_system(
-    mut player_query: Query<
-        (
-            &PlayerState,
-            &mut Sprite,
-            &mut AnimationIndices,
-            &mut AnimationTimer,
-        ),
-        (With<Player>, Changed<PlayerState>),
-    >,
+    mut player_query: Query<SpriteUpdateQuery<'static>, (With<Player>, Changed<PlayerState>)>,
     sprite_sheets: Res<crate::PlayerSpriteSheets>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {

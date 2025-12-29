@@ -15,6 +15,11 @@ use player::{ComboWindow, JumpPhysics, Player, PlayerState, PlayerStateType};
 
 const MAX_ENEMIES: u32 = 6;
 
+// Type aliases to simplify complex query types
+// Note: For `too_many_arguments` and remaining type complexity warnings,
+// we accept these as they're common in Bevy systems and the alternatives
+// would reduce code clarity.
+
 // UI Marker Components
 #[derive(Component)]
 struct ScoreText;
@@ -152,7 +157,7 @@ fn animate_sprite(
         {
             // Check if player is in Defeat state - freeze on last frame
             let is_defeated =
-                player_state.map_or(false, |state| matches!(state, PlayerState::Defeat(_)));
+                player_state.is_some_and(|state| matches!(state, PlayerState::Defeat(_)));
 
             if is_defeated && atlas.index == indices.last {
                 // Freeze on last frame of defeat animation
@@ -684,9 +689,8 @@ fn apply_knockback(
 ) {
     for (entity, mut transform, mut knockback, jump_physics) in knockback_query.iter_mut() {
         // For grounded players, only apply horizontal knockback
-        let is_grounded = jump_physics.map_or(false, |jp| {
-            (transform.translation.y - jp.ground_y).abs() < 1.0
-        });
+        let is_grounded =
+            jump_physics.is_some_and(|jp| (transform.translation.y - jp.ground_y).abs() < 1.0);
 
         if is_grounded {
             // Only apply horizontal knockback for grounded entities
@@ -760,10 +764,10 @@ fn update_ui(
     }
 
     // Update health
-    if let Ok(health) = player_query.single() {
-        if let Ok(mut text) = health_text.single_mut() {
-            **text = format!("Health: {}", health.current);
-        }
+    if let Ok(health) = player_query.single()
+        && let Ok(mut text) = health_text.single_mut()
+    {
+        **text = format!("Health: {}", health.current);
     }
 
     // Update time remaining

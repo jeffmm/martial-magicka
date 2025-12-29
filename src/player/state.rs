@@ -204,24 +204,22 @@ impl PlayerState {
     /// Factory method to create new state instances
     pub fn transition_to(state_type: PlayerStateType) -> Self {
         match state_type {
-            PlayerStateType::Idle => PlayerState::Idle(IdleStateData::default()),
-            PlayerStateType::IdleToWalk => PlayerState::IdleToWalk(IdleToWalkStateData::default()),
-            PlayerStateType::IdleToRun => PlayerState::IdleToRun(IdleToRunStateData::default()),
-            PlayerStateType::Walk => PlayerState::Walk(WalkStateData::default()),
-            PlayerStateType::Run => PlayerState::Run(RunStateData::default()),
-            PlayerStateType::Jump => PlayerState::Jump(JumpStateData::default()),
-            PlayerStateType::Fall => PlayerState::Fall(FallStateData::default()),
-            PlayerStateType::Land => PlayerState::Land(LandStateData::default()),
-            PlayerStateType::Punch => PlayerState::Punch(PunchStateData::default()),
-            PlayerStateType::PunchCombo => PlayerState::PunchCombo(PunchComboStateData::default()),
-            PlayerStateType::Kick => PlayerState::Kick(KickStateData::default()),
-            PlayerStateType::KickCombo => PlayerState::KickCombo(KickComboStateData::default()),
-            PlayerStateType::PunchKickCombo => {
-                PlayerState::PunchKickCombo(PunchKickComboStateData::default())
-            }
-            PlayerStateType::JumpPunch => PlayerState::JumpPunch(JumpPunchStateData::default()),
-            PlayerStateType::JumpKick => PlayerState::JumpKick(JumpKickStateData::default()),
-            PlayerStateType::Defeat => PlayerState::Defeat(DefeatStateData::default()),
+            PlayerStateType::Idle => PlayerState::Idle(IdleStateData),
+            PlayerStateType::IdleToWalk => PlayerState::IdleToWalk(IdleToWalkStateData),
+            PlayerStateType::IdleToRun => PlayerState::IdleToRun(IdleToRunStateData),
+            PlayerStateType::Walk => PlayerState::Walk(WalkStateData),
+            PlayerStateType::Run => PlayerState::Run(RunStateData),
+            PlayerStateType::Jump => PlayerState::Jump(JumpStateData),
+            PlayerStateType::Fall => PlayerState::Fall(FallStateData),
+            PlayerStateType::Land => PlayerState::Land(LandStateData),
+            PlayerStateType::Punch => PlayerState::Punch(PunchStateData),
+            PlayerStateType::PunchCombo => PlayerState::PunchCombo(PunchComboStateData),
+            PlayerStateType::Kick => PlayerState::Kick(KickStateData),
+            PlayerStateType::KickCombo => PlayerState::KickCombo(KickComboStateData),
+            PlayerStateType::PunchKickCombo => PlayerState::PunchKickCombo(PunchKickComboStateData),
+            PlayerStateType::JumpPunch => PlayerState::JumpPunch(JumpPunchStateData),
+            PlayerStateType::JumpKick => PlayerState::JumpKick(JumpKickStateData),
+            PlayerStateType::Defeat => PlayerState::Defeat(DefeatStateData),
         }
     }
 }
