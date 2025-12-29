@@ -71,6 +71,7 @@ fn main() {
                     // Phase 7: UI Updates
                     update_ui,
                     handle_game_over,
+                    handle_restart,
                 )
                     .chain(),
             ),
@@ -823,5 +824,105 @@ fn handle_game_over(
             },
             GameOverScreen,
         ));
+
+        // Spawn restart instruction text
+        commands.spawn((
+            Text::new("Press R to Restart"),
+            TextFont {
+                font_size: 30.0,
+                ..default()
+            },
+            TextColor(Color::srgb(0.7, 0.7, 0.7)),
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Percent(40.0),
+                top: Val::Percent(60.0),
+                ..default()
+            },
+            GameOverScreen,
+        ));
+    }
+}
+
+/// Handle restart input - reset game state when R is pressed during game over
+fn handle_restart(
+    mut commands: Commands,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut game_state: ResMut<GameState>,
+    mut player_query: Query<
+        (
+            Entity,
+            &mut Health,
+            &mut PlayerState,
+            &mut Transform,
+            &mut JumpPhysics,
+            &mut ComboWindow,
+        ),
+        With<Player>,
+    >,
+    game_over_screen_query: Query<Entity, With<GameOverScreen>>,
+    enemy_query: Query<Entity, With<Enemy>>,
+) {
+    // Only process restart when game is over
+    if !game_state.game_over {
+        return;
+    }
+
+    // Check for R key press
+    if keyboard.just_pressed(KeyCode::KeyR) {
+        // Reset game state
+        game_state.score = 0;
+        game_state.n_enemies = 0;
+        game_state.timer = Timer::from_seconds(120.0, TimerMode::Once);
+        game_state.last_spawn_time = 0.0;
+        game_state.game_over = false;
+
+        // Reset player
+        if let Ok((
+            player_entity,
+            mut health,
+            mut state,
+            mut transform,
+            mut jump_physics,
+            mut combo_window,
+        )) = player_query.single_mut()
+        {
+            // Reset health
+            health.current = health.max;
+
+            // Reset state to Idle
+            *state = PlayerState::transition_to(PlayerStateType::Idle);
+
+            // Reset position
+            transform.translation = Vec3::new(-200.0, -200.0, 1.0);
+
+            // Reset jump physics
+            jump_physics.velocity_y = 0.0;
+            jump_physics.has_used_aerial_attack = false;
+
+            // Reset combo window
+            combo_window.timer = Timer::from_seconds(0.5, TimerMode::Once);
+            combo_window.last_attack = None;
+            combo_window.queued_combo = None;
+
+            // Remove any active combat effects
+            commands
+                .entity(player_entity)
+                .remove::<Invulnerable>()
+                .remove::<Knockback>()
+                .remove::<HitFlash>();
+        }
+
+        // Despawn game over UI
+        for entity in game_over_screen_query.iter() {
+            commands.entity(entity).despawn();
+        }
+
+        // Despawn all enemies
+        for enemy_entity in enemy_query.iter() {
+            commands.entity(enemy_entity).despawn();
+        }
+
+        println!("Game restarted!");
     }
 }

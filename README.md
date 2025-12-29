@@ -10,9 +10,9 @@ This project was created to explore Bevy's ECS (Entity Component System) archite
 
 ## Features
 
-- **Fluid Combat System**: Punches, kicks, and multi-hit combos with a dedicated state machine
-- **Dynamic AI Enemies**: Ghost enemies spawn from both sides and track the player's position
-- **Smooth Animations**: Custom sprite sheet animations at 320x320 resolution
+- **"Fluid" Combat System**: Punches, kicks, and multi-hit combos with a dedicated state machine
+- **"Dynamic AI" Enemies**: Ghost enemies spawn from both sides and track the player's position
+- **"Smooth" Animations**: Custom sprite sheet animations at 320x320 resolution
 - **Modular Architecture**: Clean separation of player, enemy, combat, and common systems
 
 ## Quick Start
@@ -32,6 +32,7 @@ cargo run --release
 - **Space**: Jump
 - **Up Arrow**: Punch (tap twice quickly for combo, or in air for powerful aerial punch attack)
 - **Down Arrow**: Kick (tap twice for combo, or after punch for mixed combo, or in air for powerful aerial kick attack)
+- **R**: Restart the game (at the Game Over screen)
 
 ## Tech Stack
 
@@ -50,12 +51,15 @@ The codebase is organized into focused modules:
 - `combat/` - Hitbox collision and damage systems
 - `common/` - Shared components (direction, animation)
 
-## FAQ
+## Known issues
+### Where's the "magicka"?
+"Martial Magicka" was just a whimsical bit of alliteration. When I started building this game I imagined there would eventually be combat specials like the hadoken from Street Fighter, however due to time constraints I focused on nailing the core martial arts combat mechanics first. Future iterations may introduce magical attacks and power-ups.
+
 ### No SFX?
 Sound effects were not implemented in this demo. The state machine can easily integrate it, so I may implement it in a future update.
 
-### Where's the "magicka"?
-"Martial Magicka" was just a whimsical bit of alliteration. When I started building this game I imagined there would eventually be combat specials like the hadoken from Street Fighter, however due to time constraints I focused on nailing the core martial arts combat mechanics first. Future iterations may introduce magical attacks and power-ups.
+### The combat mechanics are imbalanced/unpolished!
+Yes.
 
 ## License
 

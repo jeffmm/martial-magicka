@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::player::config::{InputContext, UpdateContext, StateTransition as PlayerStateTransition, PlayerStateType};
+use crate::player::config::{InputContext, UpdateContext, StateTransition as PlayerStateTransition};
 use crate::player::state::PlayerState;
 use crate::player::components::{Player, JumpPhysics, ComboWindow};
 use crate::common::{AnimationTimer, AnimationIndices, Direction};
