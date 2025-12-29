@@ -7,6 +7,5 @@ pub struct Enemy;
 /// Enemy AI state
 #[derive(Component)]
 pub enum EnemyState {
-    Idle,
     Move,
 }

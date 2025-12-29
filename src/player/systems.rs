@@ -1,8 +1,10 @@
-use bevy::prelude::*;
-use crate::player::config::{InputContext, UpdateContext, StateTransition as PlayerStateTransition};
+use crate::common::{AnimationIndices, AnimationTimer, Direction};
+use crate::player::components::{ComboWindow, JumpPhysics, Player};
+use crate::player::config::{
+    InputContext, StateTransition as PlayerStateTransition, UpdateContext,
+};
 use crate::player::state::PlayerState;
-use crate::player::components::{Player, JumpPhysics, ComboWindow};
-use crate::common::{AnimationTimer, AnimationIndices, Direction};
+use bevy::prelude::*;
 
 /// Phase 1: Handle player input and request state transitions
 ///
@@ -11,8 +13,14 @@ use crate::common::{AnimationTimer, AnimationIndices, Direction};
 pub fn player_input_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut player_query: Query<
-        (&mut PlayerState, &Transform, &JumpPhysics, &mut ComboWindow, &Sprite, &AnimationIndices),
-        With<Player>
+        (
+            &mut PlayerState,
+            &JumpPhysics,
+            &mut ComboWindow,
+            &Sprite,
+            &AnimationIndices,
+        ),
+        With<Player>,
     >,
     time: Res<Time>,
     game_state: Res<crate::GameState>,
@@ -22,7 +30,9 @@ pub fn player_input_system(
         return;
     }
 
-    let Ok((mut state, transform, jump_physics, mut combo_window, sprite, indices)) = player_query.single_mut() else {
+    let Ok((mut state, jump_physics, mut combo_window, sprite, indices)) =
+        player_query.single_mut()
+    else {
         return;
     };
 
@@ -45,7 +55,6 @@ pub fn player_input_system(
         space: keyboard.just_pressed(KeyCode::Space),
         up_arrow: keyboard.just_pressed(KeyCode::ArrowUp),
         down_arrow: keyboard.just_pressed(KeyCode::ArrowDown),
-        is_airborne: transform.translation.y > jump_physics.ground_y + 1.0,
         has_used_aerial_attack: jump_physics.has_used_aerial_attack,
         current_frame,
         total_frames,
@@ -125,8 +134,6 @@ pub fn player_state_update_system(
             animation_finished,
             is_at_ground: transform.translation.y <= jump_physics.ground_y + 1.0,
             velocity_y: jump_physics.velocity_y,
-            combo_window_active: !combo_window.timer.is_finished(),
-            last_attack: combo_window.last_attack,
         };
 
         // Delegate to state's update handler
@@ -154,7 +161,7 @@ pub fn player_state_update_system(
 pub fn initialize_jump_physics(
     mut player_query: Query<
         (&PlayerState, &Transform, &mut JumpPhysics),
-        (With<Player>, Changed<PlayerState>)
+        (With<Player>, Changed<PlayerState>),
     >,
 ) {
     for (state, transform, mut jump_physics) in player_query.iter_mut() {
@@ -186,7 +193,7 @@ pub fn initialize_jump_physics(
 pub fn clear_hit_tracking_on_state_change(
     mut player_query: Query<
         (&PlayerState, &mut crate::combat::components::HitTracking),
-        (With<Player>, Changed<PlayerState>)
+        (With<Player>, Changed<PlayerState>),
     >,
 ) {
     for (state, mut hit_tracking) in player_query.iter_mut() {
@@ -269,7 +276,9 @@ pub fn player_physics_system(
     const GRAVITY: f32 = 1800.0;
     const AIR_CONTROL_SPEED: f32 = 250.0;
 
-    for (state, mut transform, mut sprite, mut jump_physics, mut direction) in player_query.iter_mut() {
+    for (state, mut transform, mut sprite, mut jump_physics, mut direction) in
+        player_query.iter_mut()
+    {
         let physics_config = state.get_physics_config();
 
         // Apply gravity if needed

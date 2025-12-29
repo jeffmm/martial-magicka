@@ -41,9 +41,9 @@ impl StateLogic for JumpStateData {
 
     fn get_physics_config(&self) -> PhysicsConfig {
         PhysicsConfig {
-            ground_speed: 0.0,     // No ground movement
-            air_control: true,     // Can steer with A/D
-            apply_gravity: true,   // Gravity slows upward velocity
+            ground_speed: 0.0,   // No ground movement
+            air_control: true,   // Can steer with A/D
+            apply_gravity: true, // Gravity slows upward velocity
             locks_movement: false,
         }
     }
@@ -90,8 +90,8 @@ impl StateLogic for FallStateData {
     fn get_physics_config(&self) -> PhysicsConfig {
         PhysicsConfig {
             ground_speed: 0.0,
-            air_control: true,     // Can steer with A/D
-            apply_gravity: true,   // Gravity accelerates downward
+            air_control: true,   // Can steer with A/D
+            apply_gravity: true, // Gravity accelerates downward
             locks_movement: false,
         }
     }

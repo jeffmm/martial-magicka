@@ -78,26 +78,45 @@ This project uses Bevy's ECS architecture exclusively. All game logic is organiz
 
 Systems are strictly ordered using `.chain()` to prevent race conditions (src/main.rs):
 
-1. **Input & State Management** (modular systems from `src/player/systems.rs`):
-   - `player_input_system` - Delegates input to state's `handle_input()` method
-   - `player_state_update_system` - Delegates transitions to state's `update()` method
-   - `initialize_jump_physics` - Sets up jump velocity when entering Jump state
-   - `player_sprite_update_system` - Updates sprites when state changes
-2. **Movement**:
-   - `player_physics_system` - Applies gravity/movement from state's `get_physics_config()`
-   - `move_enemies` - Enemy AI movement
-3. **Combat & Collision**:
-   - `update_attack_hitboxes` → `detect_combat_collisions` → `detect_player_enemy_collisions`
-4. **Damage Resolution**:
-   - `handle_damage_events` → `update_stun_timers` → `handle_enemy_defeat` → `handle_player_defeat`
-5. **Animation & Game Management**:
-   - `animate_sprite`, `count_down`, `spawn_enemy`
+**Phase 1: Input & State Management** (all chained):
+- `player_input_system` - Builds InputContext from keyboard, delegates to state's `handle_input()`, executes immediate transitions
+- `initialize_jump_physics` - Sets up jump velocity when entering Jump state, resets velocity in Fall state
+- `clear_hit_tracking_on_state_change` - Clears HitTracking when state changes (prevents hitting same enemy twice with one attack)
+- `player_state_update_system` - Builds UpdateContext from animation/physics, delegates to state's `update()`, handles queued combos
+- `player_sprite_update_system` - Updates sprite sheet when state changes (preloads sprite to prevent blinking)
 
-This ordering ensures:
-- State changes occur before sprite updates
-- Hitboxes are positioned before collision detection
-- Damage is applied before checking for defeats
-- Movement happens with current frame's state
+**Phase 2: Movement** (all chained):
+- `player_physics_system` - Applies velocity/gravity/acceleration from state's `get_physics_config()`
+- `move_enemies` - Enemy AI pathfinding to player (skipped when stunned)
+
+**Phase 3: Combat & Collision** (all chained):
+- `update_attack_hitboxes` - Activates hitbox during middle third of attack animation
+- `detect_combat_collisions` - AABB collision: hitbox vs hurtbox, writes DamageEvent
+- `detect_player_enemy_collisions` - Distance check: player vs enemy proximity, writes DamageEvent
+
+**Phase 4: Damage Resolution** (all chained):
+- `handle_damage_events` - Applies damage, spawns Stunned/Knockback/HitFlash/Invulnerable, writes defeat events
+- `update_stun_timers` - Counts down stun duration, removes component when finished
+- `update_invulnerability` - Counts down invulnerability, removes component when finished
+
+**Phase 5: Enemy AI & Physics Effects** (all chained):
+- `apply_knockback` - Applies and decays knockback velocity on enemies and player
+
+**Phase 6: Visual Effects & Game Management** (all chained):
+- `update_hit_flash` - Flashes sprite red on hit, gradually fades
+- `animate_sprite` - Advances animation frame, freezes on last frame of Defeat state
+- `count_down` - Decrements game timer, sets game_over flag when time expires
+- `spawn_enemy` - Spawns enemies every 2 seconds (max 6 active)
+- `update_ui` - Updates score/health/time text
+- `handle_game_over` - Despawns enemies and shows game over screen
+- `handle_restart` - Processes R key to restart game
+
+**Critical Ordering Details**:
+- State changes occur before sprite updates (prevent blinking)
+- Hitboxes positioned before collision detection (accurate hits)
+- Damage applied before defeat checks (consistent resolution)
+- Knockback applied before enemy movement (knockback visible next frame)
+- Animation advances last (uses current frame for hitbox/animation logic)
 
 ### Player State Machine (Modular Architecture)
 
@@ -151,6 +170,13 @@ pub enum PlayerState {
 - **Physics Config**: Movement speed, gravity, air control, input locks
 - **Transition Logic**: When to auto-transition (animation complete, physics-driven)
 
+**PhysicsConfig Details** (src/player/config.rs):
+- `ground_speed`: Movement speed when on ground (0.0 for attacks/jumps, positive for walk/run)
+- `air_control`: Whether A/D keys steer the player in the air (true for Jump/Fall/aerial attacks, false for others)
+- `apply_gravity`: Whether gravity affects the state (true for Jump/Fall, false for attacks/idle/movement)
+- `locks_movement`: If true, movement inputs are ignored during this state (true for attacks, false otherwise)
+  - **Important**: `locks_movement` is different from input locking. Attack states lock movement input, but combo inputs (up/down arrows) still work and bypass this lock via special handling in `player_input_system`
+
 **State Transition Flow**:
 - Input-driven: State's `handle_input()` responds to keyboard and returns transition
 - Animation-driven: State's `update()` checks if animation finished and returns transition
@@ -201,11 +227,18 @@ impl StateLogic for PunchStateData {
 ```
 
 **Adding a New State** (e.g., Dodge):
-1. Create `src/player/states/dodge.rs`
-2. Implement `StateLogic` trait for `DodgeStateData`
-3. Add `Dodge(DodgeStateData)` variant to `PlayerState` enum
-4. Add delegation cases to enum's methods
-5. Add `Dodge` to `PlayerStateType` enum
+1. Create `src/player/states/dodge.rs` - implement `StateLogic` for `DodgeStateData` struct
+2. Update `src/player/states/mod.rs` - add `pub mod dodge;` and `pub use dodge::DodgeStateData;`
+3. Update `src/player/state.rs`:
+   - Add `Dodge(DodgeStateData)` variant to `PlayerState` enum
+   - Add `PlayerState::Dodge(s) => s.handle_input(input)` case to `handle_input()` delegation method
+   - Add `PlayerState::Dodge(s) => s.update(ctx)` case to `update()` delegation method
+   - Add `PlayerState::Dodge(s) => s.get_animation_config()` case to `get_animation_config()` delegation
+   - Add `PlayerState::Dodge(s) => s.get_physics_config()` case to `get_physics_config()` delegation
+   - Add `PlayerState::Dodge(s) => s.is_attacking()` case to `is_attacking()` delegation
+   - Add `PlayerState::Dodge(s) => s.get_damage()` case to `get_damage()` delegation
+4. Update `src/player/config.rs` - add `Dodge` variant to `PlayerStateType` enum
+5. Update transition_to() method in src/player/state.rs to handle `PlayerStateType::Dodge`
 6. Add sprite assets to `assets/player/dodge-sheet.png`
 7. Done! Zero changes to systems or other states.
 
@@ -288,12 +321,16 @@ assets/
 
 ## Controls
 
+### In-Game
 - **A**: Run left
 - **D**: Run right
 - **Shift + A/D**: Walk (slower movement)
 - **Space**: Jump
 - **Up Arrow**: Punch (double-tap for combo)
 - **Down Arrow**: Kick (double-tap for combo, or after punch combo for mixed combo)
+
+### Game Over Screen
+- **R**: Restart the game (resets player, score, enemies, and timer)
 
 ## Development Notes
 
@@ -304,6 +341,36 @@ assets/
 - Edition 2024 Rust features enabled
 - Messages API (not Events API): Use `MessageReader`/`MessageWriter`, iterate with `for event in reader.read()`
 
+### InputContext and UpdateContext
+
+**InputContext** (src/player/config.rs) - Built from keyboard state in `player_input_system`:
+- Movement: `left`, `right`, `shift` (walk vs run)
+- Actions: `space` (jump), `up_arrow`, `down_arrow` (attacks)
+- Aerial state: `has_used_aerial_attack` (prevents double aerial attacks per jump)
+- Animation: `current_frame`, `total_frames` (used for combo timing)
+
+**UpdateContext** (src/player/config.rs) - Built from animation/physics state in `player_state_update_system`:
+- Animation: `animation_finished` (true when looping back to first frame)
+- Physics: `is_at_ground`, `velocity_y` (for jump state transitions)
+
+**Key Detail**: `InputContext.current_frame >= input.total_frames / 2` is used to allow combo inputs only in the second half of attack animations, preventing rapid-fire combos during startup frames.
+
+### State Transition Mechanisms
+
+States transition through three channels:
+
+1. **Input-driven** via `handle_input()`: Keyboard input → immediate state change
+   - Example: Punch → PunchCombo via up arrow in second half of animation
+
+2. **Animation-driven** via `update()`: Animation completion → automatic transition
+   - Example: Punch → Idle when animation finishes
+
+3. **Queued Combos** via `QueueCombo` transition: Attack input queued during animation, executed when current animation ends
+   - Managed by `ComboWindow` component (0.5s timer)
+   - Example: While punching, pressing down arrow queues PunchKickCombo (mixed combo)
+
+**Important**: The system layer (src/player/systems.rs) handles combo window tracking and queued combo execution. States only return transitions; they don't manage the combo timer.
+
 ### Common Pitfalls
 
 1. **Query conflicts**: Always use `Without<T>` to make queries disjoint when multiple systems access same components
@@ -311,6 +378,8 @@ assets/
 3. **State machine loops**: Ensure all state paths eventually return to `Idle` or another stable state
 4. **GPU texture limits**: Keep sprite sheets under 16,384 pixels wide (51 frames max at 320px tiles)
 5. **Direction hysteresis**: Use threshold zones (e.g., 150px) to prevent rapid switching at boundaries
+6. **Combo timing**: Only queue combos in the second half of attack animations to prevent instant re-triggering
+7. **locks_movement in PhysicsConfig**: Attack states set this to true, but combo inputs bypass this lock in `player_input_system`
 
 ### Debugging Animation Issues
 
@@ -325,7 +394,8 @@ If sprites blink or disappear:
 If state transitions don't work as expected:
 1. Check the state's `handle_input()` method for input-driven transitions
 2. Check the state's `update()` method for animation/physics-driven transitions
-3. Verify `InputContext` and `UpdateContext` are populated correctly in systems
+3. Verify `InputContext` and `UpdateContext` are populated correctly in systems (src/player/systems.rs)
 4. Use debug logging in state methods to trace transitions
-5. Check that combo window timer is being ticked in `player_input_system`
+5. For combo issues: Ensure state checks `input.current_frame >= input.total_frames / 2` before queueing
 6. For new states, ensure all delegation methods in `PlayerState` enum include the new variant
+7. Check that `ComboWindow` timer is being ticked in `player_input_system` and reset on new attacks

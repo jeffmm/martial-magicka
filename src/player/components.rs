@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use crate::player::config::PlayerStateType;
+use bevy::prelude::*;
 
 /// Marker component for the player entity
 #[derive(Component)]

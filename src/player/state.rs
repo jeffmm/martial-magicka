@@ -27,13 +27,6 @@ pub trait StateLogic: Send + Sync + Clone {
     /// Returns movement speed, gravity settings, and input lock status
     fn get_physics_config(&self) -> PhysicsConfig;
 
-    /// Does this state lock player input?
-    ///
-    /// Default implementation checks locks_movement in physics config
-    fn locks_input(&self) -> bool {
-        self.get_physics_config().locks_movement
-    }
-
     /// Is this an attacking state?
     ///
     /// Default: false. Override in attack states (Punch, Kick, etc.)

@@ -31,7 +31,6 @@ pub struct InputContext {
     pub space: bool,
     pub up_arrow: bool,
     pub down_arrow: bool,
-    pub is_airborne: bool,
     /// True if player has already used an aerial attack during this jump
     pub has_used_aerial_attack: bool,
     /// Current animation frame index
@@ -49,10 +48,6 @@ pub struct UpdateContext {
     pub is_at_ground: bool,
     /// Current vertical velocity
     pub velocity_y: f32,
-    /// True if the combo window timer is still active
-    pub combo_window_active: bool,
-    /// The last attack state performed (for combo chaining)
-    pub last_attack: Option<PlayerStateType>,
 }
 
 /// Lightweight enum representing state types (for transitions)
